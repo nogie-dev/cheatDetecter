@@ -1,8 +1,10 @@
 import hashlib
+from flask import session
 from CTFd.models import db
 
 from CTFd.utils.user import (
     get_ip, 
+    get_user_attrs,
     get_current_user,
     get_current_user_attrs
 )
@@ -37,10 +39,22 @@ def flag_created_log(container_id, chal_id, team_id, user_id):
         db.session.commit()
 
 def cheat_detecter(submission):
-    user_id=get_current_user_attrs.id
+    user_id=get_current_user().id
+    user_name = get_user_attrs(user_id).name
+    check_info = DynamicFlag.query.filter_by(created_flag=submission).first()
+    print(check_info)
+    if check_info:
+        if user_id != check_info.id:
+             print(get_user_attrs(2))
+             sharer_name = get_user_attrs(check_info.user_id).name
+             print(sharer_name)
+             print("Cheater!!!")
+             print("Sharer : ", sharer_name)
+             print("Shared : ", user_name)
+             return True
     
-
 def load(app):
     app.db.create_all()
+
         
 
