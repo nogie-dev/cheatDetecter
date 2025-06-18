@@ -1,11 +1,10 @@
-# __init__.py for cheatDetecter plugin
 import hashlib
 import time
 import datetime
 
 from pathlib import Path
 from flask import Blueprint, request, Flask, render_template, url_for, redirect, flash, jsonify
-from CTFd.models import db, Flags
+from CTFd.models import db, Flags, Teams
 from CTFd.utils.user import (
     get_ip,
     get_user_attrs,
@@ -14,7 +13,6 @@ from CTFd.utils.user import (
 from CTFd.utils.decorators import authed_only, admins_only
 from CTFd.plugins.flags import get_flag_class, FlagException
 
-# Import the models for the plugin
 from .models import DynamicFlag, cheatList
 
 online = Blueprint('detecter', __name__, template_folder="templates", url_prefix='/detecter')
@@ -37,6 +35,7 @@ def flag_created_log(container_id, chal_id, team_id, user_id):
         container_id=container_id,
         challenge_id=chal_id,
         user_id=user_id,
+        team_id=team_id,
         user_ip=get_ip()
     )
     flag_type=None
@@ -46,34 +45,70 @@ def flag_created_log(container_id, chal_id, team_id, user_id):
     db.session.commit()
 
 def cheat_detecter(submission):
-    user_id=get_current_user().id
+    user_id = get_current_user().id
     user_name = get_user_attrs(user_id).name
+    user_team = Teams.query.filter_by(id=get_current_user().team_id).first()
+    
     check_info = DynamicFlag.query.filter_by(created_flag=submission).first()
     if check_info:
         if user_id != check_info.user_id:
             sharer_name = get_user_attrs(check_info.user_id).name
-            print("Cheat Hit")
-            print("Sharer : ", sharer_name)
-            print("Shared : ", user_name)
+            sharer_team = Teams.query.filter_by(id=check_info.team_id).first()
             
-            add_log = cheatList(
-                shared_username=sharer_name,
-                sharer_username=user_name,
-                cheat_ip=get_ip(),
-                timestamp=int(time.time()),
-                reason="Flag Sharing"
-            )
-            
-            db.session.add(add_log)
-            db.session.commit()
-            return True
+            if user_team and sharer_team:
+                if user_team.id != sharer_team.id:
+                    print("Cheat Hit - Cross Team")
+                    print("Sharer Team: ", sharer_team.name)
+                    print("Sharer: ", sharer_name)
+                    print("Shared Team: ", user_team.name)
+                    print("Shared: ", user_name)
+                    
+                    add_log = cheatList(
+                        shared_username=sharer_name,
+                        sharer_username=user_name,
+                        shared_team=user_team.name,
+                        sharer_team=sharer_team.name,
+                        cheat_ip=get_ip(),
+                        timestamp=int(time.time()),
+                        reason="Cross Team Flag Sharing"
+                    )
+                    
+                    db.session.add(add_log)
+                    db.session.commit()
+                    return True
+            else:
+                print("Cheat Hit - Individual")
+                print("Sharer: ", sharer_name)
+                print("Shared: ", user_name)
+                
+                add_log = cheatList(
+                    shared_username=sharer_name,
+                    sharer_username=user_name,
+                    shared_team=user_team.name if user_team else "Individual",
+                    sharer_team=sharer_team.name if sharer_team else "Individual",
+                    cheat_ip=get_ip(),
+                    timestamp=int(time.time()),
+                    reason="Flag Sharing"
+                )
+                
+                db.session.add(add_log)
+                db.session.commit()
+                return True
     return False
 
 @online.route('/api/cheat_data', methods=['GET'])
 @admins_only
 def route_cheat_data():
     cheatusers = cheatList.query.order_by(cheatList.timestamp.desc()).all()
-    data = [{'shared_username': c.shared_username, 'sharer_username': c.sharer_username, 'cheat_ip': c.cheat_ip, 'timestamp': c.timestamp, 'reason': c.reason} for c in cheatusers]
+    data = [{
+        'shared_username': c.shared_username, 
+        'sharer_username': c.sharer_username,
+        'shared_team': c.shared_team,
+        'sharer_team': c.sharer_team,
+        'cheat_ip': c.cheat_ip, 
+        'timestamp': c.timestamp, 
+        'reason': c.reason
+    } for c in cheatusers]
     return jsonify(data)
 
 @online.app_template_filter("format_time")
