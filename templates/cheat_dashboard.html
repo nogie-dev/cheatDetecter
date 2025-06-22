@@ -1,0 +1,159 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+
+<style>
+    .cheat-container {
+        max-width: none;
+    }
+</style>
+
+<div class="jumbotron">
+    <div class="container">
+        <h1>Cheat Detection Dashboard</h1>
+    </div>
+</div>
+<div class="container cheat-container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-danger" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="mt-3">
+        <label for="filter"><strong>Filter </strong></label>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <select id="user-filter" class="form-control">
+                        <option value="">All Users</option>
+                        <!-- Add options for users dynamically based on your data -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <select id="reason-filter" class="form-control">
+                        <option value="">All Reasons</option>
+                        <!-- Add options for reasons dynamically based on your data -->
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th><strong>Shared Username</strong></th>
+                <th><strong>Sharer Username</strong></th>
+                <th><strong>IP</strong></th>
+                <th><strong>Timestamp</strong></th>
+                <th><strong>Reason</strong></th>
+            </tr>
+        </thead>
+        <tbody id="cheat-table-body">
+            {% if cheater %}
+            {% for c in cheater %}
+            <tr>
+                <td>{{ c.shared_username }}</td>
+                <td>{{ c.sharer_username }}</td>
+                <td>{{ c.cheat_ip }}</td>
+                <td>{{ c.timestamp|format_time }}</td>
+                <td>{{ c.reason }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let globalData;
+
+    // Fetch data for the filtering functionality
+    fetch('/detecter/api/cheat_data')
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then((data) => {
+            globalData = data;
+            // Populate the users and reasons selects
+            const userSelect = document.getElementById("user-filter");
+            const reasonSelect = document.getElementById("reason-filter");
+
+            // Get unique users and reasons
+            const users = [...new Set([...data.map(item => item.shared_username), ...data.map(item => item.sharer_username)])];
+            const reasons = [...new Set(data.map(item => item.reason))];
+
+            // Populate the users select
+            users.forEach((user) => {
+                const option = document.createElement("option");
+                option.value = user;
+                option.text = user;
+                userSelect.appendChild(option);
+            });
+
+            // Populate the reasons select
+            reasons.forEach((reason) => {
+                const option = document.createElement("option");
+                option.value = reason;
+                option.text = reason;
+                reasonSelect.appendChild(option);
+            });
+
+            // Set up the event listeners for filtering
+            userSelect.addEventListener('change', applyFilters);
+            reasonSelect.addEventListener('change', applyFilters);
+        })
+        .catch((error) => {
+            console.error('There was a problem with the fetch operation:', error);
+        });
+
+    function applyFilters() {
+        const selectedUser = document.getElementById("user-filter").value;
+        const selectedReason = document.getElementById("reason-filter").value;
+
+        const cheatTableBody = document.getElementById("cheat-table-body");
+        cheatTableBody.innerHTML = "";
+
+        // If we don't have data yet, return
+        if (!globalData) return;
+
+        // Iterate through the cheater data in the JSON response
+        globalData.forEach((cheatItem) => {
+            // Check if the cheater matches the selected filters
+            const isUserMatch = selectedUser === "" || 
+                                cheatItem.shared_username === selectedUser || 
+                                cheatItem.sharer_username === selectedUser;
+            const isReasonMatch = selectedReason === "" || cheatItem.reason === selectedReason;
+
+            if (isUserMatch && isReasonMatch) {
+                // Create a new table row and populate it with cheater data
+                const newRow = document.createElement("tr");
+                
+                newRow.innerHTML = `
+                    <td>${cheatItem.shared_username}</td>
+                    <td>${cheatItem.sharer_username}</td>
+                    <td>${cheatItem.cheat_ip}</td>
+                    <td>${new Date(cheatItem.timestamp * 1000).toLocaleString()}</td>
+                    <td>${cheatItem.reason}</td>
+                `;
+                
+                // Append the new row to the table body
+                cheatTableBody.appendChild(newRow);
+            }
+        });
+    }
+</script>
+{% endblock %} 
