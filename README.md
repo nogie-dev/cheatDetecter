@@ -20,9 +20,13 @@ A powerful anti-cheating plugin for CTFd that detects and prevents flag sharing 
 
 ## 📸 Screenshots & Logs
 
-### Console Detection Logs
-![Console Detection Logs](screenshots/console_detection.png)
-*Real-time cheat detection logs in the console showing cross-team flag sharing attempts*
+### Team Mode Logging
+![Team Mode Logging](screenshots/team.png)
+*Console logs showing cross-team flag sharing detection in team competition mode*
+
+### Individual Mode Logging
+![Individual Mode Logging](screenshots/individual.png)
+*Console logs showing flag sharing detection in individual competition mode*
 
 ### Admin Dashboard
 ![Admin Dashboard](screenshots/dashboard_overview.png)
