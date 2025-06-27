@@ -21,12 +21,10 @@ class DynamicFlag(db.Model):
     def __init__(self, *args, **kwargs):
         super(DynamicFlag, self).__init__(**kwargs)
 
-
 class cheatList(db.Model):
     id = db.Column(
         db.Integer, primary_key=True
     )
-
     shared_username = db.Column(db.Text)
     sharer_username = db.Column(db.Text)
     shared_team = db.Column(db.Text)
@@ -37,3 +35,13 @@ class cheatList(db.Model):
 
     def __init__(self, *args, **kwargs):
         super(cheatList, self).__init__(**kwargs)
+
+class ContainerLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    container_id = db.Column(db.String(64))
+    user_id = db.Column(db.Integer)
+    challenge_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime)
+
+    def __init__(self, *args, **kwargs):
+        super(ContainerLog, self).__init__(**kwargs)

@@ -12,10 +12,14 @@ from CTFd.utils.user import (
 )
 from CTFd.utils.decorators import authed_only, admins_only
 from CTFd.plugins.flags import get_flag_class, FlagException
+from CTFd.utils.config import get_config, is_teams_mode
 
 from .models import DynamicFlag, cheatList
 
 online = Blueprint('detecter', __name__, template_folder="templates", url_prefix='/detecter')
+
+def is_team_mode():
+    return is_teams_mode()
 
 def insert_dynamic_flag(challenge_id, created_flag, flag_type):
     add_flag = Flags(
@@ -27,22 +31,53 @@ def insert_dynamic_flag(challenge_id, created_flag, flag_type):
     db.session.add(add_flag)
     db.session.commit()
 
-def flag_created_log(container_id, chal_id, team_id, user_id):
-    concat_str = str(container_id) + str("tmp")
-    hashing_flag = hashlib.sha256(concat_str.encode()).hexdigest()
-    add_log = DynamicFlag(
-        created_flag=hashing_flag,
-        container_id=container_id,
-        challenge_id=chal_id,
-        user_id=user_id,
-        team_id=team_id,
-        user_ip=get_ip()
+def handle_team_mode_cheating(check_info, user_id, user_name, user_team):
+    sharer_name = get_user_attrs(check_info.user_id).name
+    sharer_team = Teams.query.filter_by(id=check_info.team_id).first()
+    
+    if user_team and sharer_team and user_team.id != sharer_team.id:
+        print("Cheat Hit - Cross Team")
+        print("Sharer Team: ", sharer_team.name)
+        print("Sharer: ", sharer_name)
+        print("Shared Team: ", user_team.name)
+        print("Shared: ", user_name)
+        
+        add_log = cheatList(
+            shared_username=sharer_name,
+            sharer_username=user_name,
+            shared_team=user_team.name,
+            sharer_team=sharer_team.name,
+            cheat_ip=get_ip(),
+            timestamp=int(time.time()),
+            reason="Cross Team Flag Sharing"
+        )
+        
+        db.session.add(add_log)
+        db.session.commit()
+        return True
+    return False
+
+def handle_individual_mode_cheating(check_info, user_id, user_name, user_team):
+    sharer_name = get_user_attrs(check_info.user_id).name
+    sharer_team = Teams.query.filter_by(id=check_info.team_id).first()
+    
+    print("Cheat Hit - Individual")
+    print("Sharer: ", sharer_name)
+    print("Shared: ", user_name)
+    
+    add_log = cheatList(
+        shared_username=sharer_name,
+        sharer_username=user_name,
+        shared_team=user_team.name if user_team else "Individual",
+        sharer_team=sharer_team.name if sharer_team else "Individual",
+        cheat_ip=get_ip(),
+        timestamp=int(time.time()),
+        reason="Flag Sharing"
     )
-    flag_type=None
-    insert_dynamic_flag(chal_id, hashing_flag, flag_type)
     
     db.session.add(add_log)
     db.session.commit()
+    return True
 
 def cheat_detecter(submission):
     user_id = get_current_user().id
@@ -50,50 +85,11 @@ def cheat_detecter(submission):
     user_team = Teams.query.filter_by(id=get_current_user().team_id).first()
     
     check_info = DynamicFlag.query.filter_by(created_flag=submission).first()
-    if check_info:
-        if user_id != check_info.user_id:
-            sharer_name = get_user_attrs(check_info.user_id).name
-            sharer_team = Teams.query.filter_by(id=check_info.team_id).first()
-            
-            if user_team and sharer_team:
-                if user_team.id != sharer_team.id:
-                    print("Cheat Hit - Cross Team")
-                    print("Sharer Team: ", sharer_team.name)
-                    print("Sharer: ", sharer_name)
-                    print("Shared Team: ", user_team.name)
-                    print("Shared: ", user_name)
-                    
-                    add_log = cheatList(
-                        shared_username=sharer_name,
-                        sharer_username=user_name,
-                        shared_team=user_team.name,
-                        sharer_team=sharer_team.name,
-                        cheat_ip=get_ip(),
-                        timestamp=int(time.time()),
-                        reason="Cross Team Flag Sharing"
-                    )
-                    
-                    db.session.add(add_log)
-                    db.session.commit()
-                    return True
-            else:
-                print("Cheat Hit - Individual")
-                print("Sharer: ", sharer_name)
-                print("Shared: ", user_name)
-                
-                add_log = cheatList(
-                    shared_username=sharer_name,
-                    sharer_username=user_name,
-                    shared_team=user_team.name if user_team else "Individual",
-                    sharer_team=sharer_team.name if sharer_team else "Individual",
-                    cheat_ip=get_ip(),
-                    timestamp=int(time.time()),
-                    reason="Flag Sharing"
-                )
-                
-                db.session.add(add_log)
-                db.session.commit()
-                return True
+    if check_info and user_id != check_info.user_id:
+        if is_team_mode():
+            return handle_team_mode_cheating(check_info, user_id, user_name, user_team)
+        else:
+            return handle_individual_mode_cheating(check_info, user_id, user_name, user_team)
     return False
 
 @online.route('/api/cheat_data', methods=['GET'])
@@ -125,6 +121,8 @@ def show_cheat():
 
 def load(app):
     from CTFd.plugins.challenges import BaseChallenge, CHALLENGE_CLASSES
+    from .docker_monitor import start_monitor
+    start_monitor(app)
     
     original_attempt = BaseChallenge.attempt
     
