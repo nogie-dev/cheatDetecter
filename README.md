@@ -20,17 +20,17 @@ A powerful anti-cheating plugin for CTFd that detects and prevents flag sharing 
 
 ## 📸 Screenshots & Logs
 
-### Team Mode Logging
-![Team Mode Logging](screenshots/team.png)
-*Console logs showing cross-team flag sharing detection in team competition mode*
-
-### Individual Mode Logging
-![Individual Mode Logging](screenshots/individual.png)
-*Console logs showing flag sharing detection in individual competition mode*
+### Console Detection Logs
+![Console Detection Logs](screenshots/console_detection.png)
+*Real-time cheat detection logs in the console showing cross-team flag sharing attempts*
 
 ### Admin Dashboard
 ![Admin Dashboard](screenshots/dashboard_overview.png)
 *Comprehensive admin dashboard displaying all detected cheating attempts with filtering capabilities*
+
+### Detailed Cheat Logs
+![Detailed Logs](screenshots/detailed_logs.png)
+*Detailed view of cheating incidents including usernames, teams, IP addresses, and timestamps*
 
 ## 🚀 Installation
 
@@ -185,59 +185,6 @@ For issues and questions:
 - **v1.1.0**: Added admin dashboard and API endpoints
 - **v1.2.0**: Enhanced filtering and UI improvements
 - **v1.3.0**: Added support for dynamic flags and container integration
-
-## 🏗️ Using Dynamic Flags in Challenge Containers (Pwn/Web)
-
-You can use this plugin to generate dynamic flags for each user/team and inject them into your challenge containers as environment variables. This is especially useful for pwn and web challenges.
-
-### Workflow Overview
-1. **Dynamic Flag Generation**: When a user/team starts a challenge, a unique flag is generated and stored in the database (DynamicFlag table).
-2. **Container Launch**: When the challenge container is created (e.g., via Docker), the generated flag is passed as an environment variable.
-3. **Challenge Code**: The challenge service (pwn/web) loads the flag from the environment variable and uses it for flag validation.
-
-### Example: Dockerfile for Challenge Container
-
-```dockerfile
-FROM ubuntu:20.04
-# ... other setup ...
-
-# Set the flag from the environment variable when the container starts
-ENV FLAG=CTF{dummy_flag}
-
-# (Optional) Use an entrypoint script to inject the flag at runtime
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-ENTRYPOINT ["/run.sh"]
-```
-
-### Example: run.sh Entrypoint Script
-
-```bash
-#!/bin/bash
-# Start your service, passing the flag from the environment
-export FLAG=${FLAG}
-exec /your/challenge/binary_or_server
-```
-
-### Example: Challenge Code (Python)
-
-```python
-import os
-FLAG = os.environ.get('FLAG', 'CTF{dummy_flag}')
-# Use FLAG in your challenge logic
-```
-
-### How to Connect the Dynamic Flag
-- When launching the container for a user/team, retrieve the generated flag from the CTFd database (DynamicFlag table) and pass it as the `FLAG` environment variable:
-  - Example (docker run):
-    ```bash
-    docker run -d -e FLAG=<generated_flag> ... your_challenge_image
-    ```
-- Your challenge code should always read the flag from the environment variable, not hardcode it.
-
-### Integration with CTFd
-- If you use an orchestration system or script to launch containers, make sure it queries the plugin/database for the correct flag and injects it as shown above.
-- This ensures each user/team gets a unique flag, and the plugin can track and detect any flag sharing or cheating attempts.
 
 ---
 
