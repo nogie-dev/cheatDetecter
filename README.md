@@ -20,10 +20,6 @@ A powerful plugin for CTFd that detects and logs flag sharing and cheating attem
 
 ## 📸 Screenshots
 
-### Console Detection Logs
-![Console Detection Logs](screenshots/console_detection.png)
-*Real-time flag sharing detection logs*
-
 ### Admin Dashboard
 ![Admin Dashboard](screenshots/dashboard_overview.png)
 *Admin dashboard for reviewing all detected cheating attempts*
