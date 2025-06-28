@@ -178,15 +178,6 @@ For issues and questions:
 3. Open an issue on the repository
 4. Contact the plugin maintainer
 
-## 🔄 Version History
-
-- **v1.0.0**: Initial release with basic cheat detection
-- **v1.1.0**: Added admin dashboard and API endpoints
-- **v1.2.0**: Enhanced filtering and UI improvements
-- **v1.3.0**: Added support for dynamic flags and container integration
-
----
-
 **Note**: This plugin is designed to help maintain fair play in CTF competitions. Use responsibly and ensure your competition rules are clearly communicated to participants.
 
 ## 🐳 Docker Monitor Flag Generation
